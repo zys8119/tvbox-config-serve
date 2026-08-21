@@ -15,8 +15,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 app.get("/", (req: Request, res: Response) => {
-  const { wd } = req.query;
-  if (wd) {
+  const { wd, ac, ids } = req.query;
+  if (wd && ac === "detail") {
     return res.json({
       code: 1,
       msg: "ok",
@@ -34,6 +34,38 @@ app.get("/", (req: Request, res: Response) => {
       ],
     });
   }
+  if (ac == "detail" && ids) {
+    return res.json({
+      code: 1,
+      msg: "ok",
+      page: 1,
+      pagecount: 1,
+      limit: 20,
+      total: 1,
+      list: [
+        {
+          vod_id: String(ids),
+          vod_name: "测试电影",
+          vod_pic: "",
+          vod_remarks: "测试",
+          vod_year: "2026",
+          vod_area: "中国",
+          vod_lang: "国语",
+          vod_actor: "测试演员",
+          vod_director: "测试导演",
+          vod_content: "这是一个 TVBox Node API 测试影片",
+
+          // 播放地址
+          vod_play_from: "默认线路",
+
+          // 格式：
+          // 第1集$播放地址#第2集$播放地址
+          vod_play_url:
+            "第1集$https://example.com/video/1.m3u8#第2集$https://example.com/video/2.m3u8",
+        },
+      ],
+    });
+  }
   return res.json(fs.readJsonSync(import.meta.dirname + "/tvbox.json"));
 });
 app.get("/vod", (req: Request, res: Response) => {
@@ -44,15 +76,9 @@ app.get("/vod", (req: Request, res: Response) => {
       list: [
         {
           id: 1,
-          name: "低智商犯罪",
+          name: "我的影视",
           cover: "https://example.com/cover.jpg",
           url: "https://example.com/play.mp4",
-        },
-        {
-          vod_id: "1",
-          vod_name: "测试电影",
-          vod_pic: "https://picsum.photos/300/400",
-          vod_remarks: "测试",
         },
       ],
     },
