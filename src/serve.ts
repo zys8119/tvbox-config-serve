@@ -46,7 +46,8 @@ app.get("/", (req: Request, res: Response) => {
         {
           vod_id: String(ids),
           vod_name: "测试电影",
-          vod_pic: "",
+          vod_pic:
+            "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
           vod_remarks: "测试",
           vod_year: "2026",
           vod_area: "中国",
