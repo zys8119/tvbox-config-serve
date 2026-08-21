@@ -51,34 +51,31 @@ app.get("/", (req: Request, res: Response) => {
       limit: 20,
       total: 1,
       list: [
+        // {
+        //   vod_id: "1",
+        //   vod_name: "测试电影",
+        //   vod_pic:
+        //     "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
+        //   vod_remarks: "测试",
+        //   vod_year: "2026",
+        //   vod_area: "中国",
+        //   vod_lang: "国语",
+        //   vod_actor: "测试演员",
+        //   vod_director: "测试导演",
+        //   vod_content: "这是一个 TVBox Node API 测试影片",
+        //   // 播放地址
+        //   vod_play_from: "默认线路",
+        //   // 格式：
+        //   // 第1集$播放地址#第2集$播放地址
+        //   vod_play_url:
+        //     "第1集$https://example.com/video/1.m3u8#第2集$https://example.com/video/2.m3u8",
+        // },
         {
           vod_id: "1",
           vod_name: "测试电影",
-          vod_pic:
-            "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
-          vod_remarks: "测试",
-          vod_year: "2026",
-          vod_area: "中国",
-          vod_lang: "国语",
-          vod_actor: "测试演员",
-          vod_director: "测试导演",
-          vod_content: "这是一个 TVBox Node API 测试影片",
-
-          // 播放地址
-          vod_play_from: "默认线路",
-
-          // 格式：
-          // 第1集$播放地址#第2集$播放地址
-          vod_play_url:
-            "第1集$https://example.com/video/1.m3u8#第2集$https://example.com/video/2.m3u8",
-        },
-        {
-          vod_id: "2",
-          vod_name: "测试电影",
           vod_play_from: "线路A$$线路B",
-
           vod_play_url:
-            "正片$https://a.com/movie.m3u8$$正片$https://b.com/movie.m3u8",
+            "第1集$https://a.com/1.m3u8#第2集$https://a.com/2.m3u8#第3集$https://a.com/3.m3u8$$第1集$https://b.com/1.m3u8#第2集$https://b.com/2.m3u8#第3集$https://b.com/3.m3u8",
         },
       ],
     });
