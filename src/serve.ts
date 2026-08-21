@@ -73,9 +73,9 @@ app.get("/", (req: Request, res: Response) => {
         {
           vod_id: "1",
           vod_name: "测试电影",
-          vod_play_from: "线路A$$线路B",
+          vod_play_from: "线路A$$$线路B",
           vod_play_url:
-            "第1集$https://a.com/1.m3u8#第2集$https://a.com/2.m3u8#第3集$https://a.com/3.m3u8$$第1集$https://b.com/1.m3u8#第2集$https://b.com/2.m3u8#第3集$https://b.com/3.m3u8",
+            "第1集$https://a.com/1.m3u8#第2集$https://a.com/2.m3u8#第3集$https://a.com/3.m3u8$$$第1集$https://b.com/1.m3u8#第2集$https://b.com/2.m3u8#第3集$https://b.com/3.m3u8",
         },
       ],
     });
