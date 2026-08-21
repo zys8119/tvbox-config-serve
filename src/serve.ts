@@ -28,8 +28,16 @@ app.get("/", (req: Request, res: Response) => {
         {
           vod_id: "1",
           vod_name: `搜索：${wd}`,
-          vod_pic: "",
+          vod_pic:
+            "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
           vod_remarks: "Node测试",
+        },
+        {
+          vod_id: "2",
+          vod_name: `搜索：${wd}`,
+          vod_pic:
+            "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
+          vod_remarks: "Node测试2",
         },
       ],
     });
@@ -44,7 +52,7 @@ app.get("/", (req: Request, res: Response) => {
       total: 1,
       list: [
         {
-          vod_id: String(ids),
+          vod_id: "1",
           vod_name: "测试电影",
           vod_pic:
             "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
@@ -63,6 +71,14 @@ app.get("/", (req: Request, res: Response) => {
           // 第1集$播放地址#第2集$播放地址
           vod_play_url:
             "第1集$https://example.com/video/1.m3u8#第2集$https://example.com/video/2.m3u8",
+        },
+        {
+          vod_id: "2",
+          vod_name: "测试电影",
+          vod_play_from: "线路A$$线路B",
+
+          vod_play_url:
+            "正片$https://a.com/movie.m3u8$$正片$https://b.com/movie.m3u8",
         },
       ],
     });
