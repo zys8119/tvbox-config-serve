@@ -1,0 +1,30 @@
+{
+  "spider": "https://raw.githubusercontent.com/qist/tvbox/refs/heads/master//jar/custom_spider.jar;md5;41c87635d7592069884a5dafa12acabe",
+  "wallpaper": "http://饭太硬.ga/深色壁纸/api.php",
+  "sites": [
+    {
+      "key": "my_site",
+      "name": "我的影视站",
+      "type": 1,
+      "api": "http://192.168.2.96:3333"
+    },
+    {
+      "key": "my_site2",
+      "name": "我的影视站2",
+      "type": 1,
+      "api": "http://192.168.2.96:3333"
+    }
+  ],
+  "parses": [
+    {
+      "name": "默认解析",
+      "type": 1,
+      "url": "http://192.168.2.96:3333/parse?url="
+    }
+  ],
+  "rules": [],
+  "lives": [],
+  "flags": [],
+  "ijk": [],
+  "ads": []
+}
