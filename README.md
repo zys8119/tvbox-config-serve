@@ -1,6 +1,37 @@
 # tvbox json 配置node服务
 
-tvbox 4k资源脚本
+## 解析tvbox json配置vod_play_from、vod_play_url
+
+```ts
+function parseUrls(item: Record<string, any>): Record<string, any> {
+  const { vod_play_from, vod_play_url } = item;
+  const urls = vod_play_url.split("$$$").map((e: any) =>
+    ((data: Array<Array<string>>) => {
+      return data.reduce((pre: any, cur: any) => {
+        pre.push({
+          page: cur[0],
+          id: cur[1],
+        });
+        return pre;
+      }, []);
+    })(e.split("#").map((e: any) => e.split("$"))),
+  );
+  return vod_play_from
+    .split("$$$")
+    .reduce((pre: any, cur: any, index: number) => {
+      pre.push({
+        flag: cur,
+        list: urls[index].map((e: any) => ({
+          ...e,
+          url: `http://127.0.0.1:3001/play?flag=${cur}&id=${e.id}`,
+        })),
+      });
+      return pre;
+    }, []);
+}
+```
+
+## tvbox 4k资源脚本
 
 ```ts
 /**
