@@ -1,40 +1,20 @@
 # tvbox json 配置node服务
 
-## 解析tvbox json配置vod_play_from、vod_play_url
-
-```ts
-function parseUrls(item: Record<string, any>): Record<string, any> {
-  const { vod_play_from, vod_play_url } = item;
-  const urls = vod_play_url.split("$$$").map((e: any) =>
-    ((data: Array<Array<string>>) => {
-      return data.reduce((pre: any, cur: any) => {
-        pre.push({
-          page: cur[0],
-          id: cur[1],
-        });
-        return pre;
-      }, []);
-    })(e.split("#").map((e: any) => e.split("$"))),
-  );
-  return vod_play_from
-    .split("$$$")
-    .reduce((pre: any, cur: any, index: number) => {
-      pre.push({
-        flag: cur,
-        list: urls[index].map((e: any) => ({
-          ...e,
-          url: `http://127.0.0.1:3001/play?flag=${cur}&id=${e.id}`,
-        })),
-      });
-      return pre;
-    }, []);
-}
-```
-
 ## tvbox 4k资源脚本
 
 ```ts
 /**
+ * 来源：https://api.tvbox.xin/ 订阅中的
+ * {
+      "name": "🍂┃橘汁┃快速",
+      "key": "线路14",
+      "type": 3,
+      "jar": "https://zl.wpscdn.cn/2026/09/11/space_img/0f5c235d-ee40-42a0-a19a-b7f29986c51c.png;md5;7a2cb30dc4937d27e57288b5c381e19c",
+      "api": "csp_Woshinidie",
+      "searchable": 1,
+      "quickSearch": 1,
+      "changeable": 1
+    },
  * Woshinidie（橘汁）—— TVBox `csp_Woshinidie` 的 Node.js 服务化实现
  *
  * 来源：sources/com/github/catvod/spider/Woshinidie.java
@@ -68,18 +48,8 @@ const PAGE_SIZE = "21";
 const NSFW =
   /(情色|色情|成人|伦理|倫理|理论|理論|三级|三級|无码|無碼|有码|有碼|步兵|骑兵|騎兵|福利|自拍|探花|偷拍|露点|露點|激情|肉番|里番|裏番|岛国|島國|島国|av|sm|情欲|情慾|淫|同性)/i;
 
-const DIRECT_EXTS = [
-  "mp4",
-  "m3u8",
-  "flv",
-  "mkv",
-  "avi",
-  "ts",
-  "mov",
-  "mpd",
-  "m4a",
-  "wmv",
-];
+/** 直链判断正则，与原实现 j() 完全一致 */
+const DIRECT_RE = /^.*\.(mp4|m3u8|flv|mkv|avi|ts|mov|mpd|m4a|wmv)(\?.*)?$/i;
 
 /* ============================== 加密工具 ============================== */
 
@@ -416,13 +386,82 @@ async function getText(
 
 const isNSFW = (s: string): boolean => !!s && NSFW.test(s);
 
-/** 判断是否直链（原实现 j()，用扩展名判断以规避正则转义） */
+/** 判断是否直链（原实现 j()） */
 function isDirectUrl(u: string): boolean {
   if (!u) return false;
-  const noQuery = u.split("?")[0];
-  const dot = noQuery.lastIndexOf(".");
-  if (dot < 0) return false;
-  return DIRECT_EXTS.includes(noQuery.slice(dot + 1).toLowerCase());
+  return DIRECT_RE.test(u);
+}
+
+interface PlayEpisode {
+  /** 剧集名称 */
+  name: string;
+  /** 原始播放地址（非直链时为 Base64 payload） */
+  url: string;
+  /** 是否直链（true 时 url 可直接播放） */
+  direct: boolean;
+  /** 本服务的播放地址：/play?flag=<线路名>&id=<剧集地址> */
+  play_url: string;
+  /** 非直链时 Base64 payload 解出的参数，如 { vodPlayFrom, playUrl } */
+  payload?: Record<string, string>;
+}
+
+interface PlayLine {
+  /** 线路名称（vod_play_from 中的一项） */
+  from: string;
+  /** 该线路下的全部剧集 */
+  episodes: PlayEpisode[];
+}
+
+/** 本服务基地址，用于拼接 play_url（默认 3001，可用 PORT 覆盖） */
+function selfBase(): string {
+  return "http://127.0.0.1:" + Number(process.env.PORT ?? 3001);
+}
+
+/**
+ * 把 vod_play_from / vod_play_url 两个 $$$ 分隔的字符串解析成结构化线路列表。
+ * 对应格式：
+ *   vod_play_from = "线路A$$$线路B"
+ *   vod_play_url  = "第1集$url1#第2集$url2$$$第1集$url1"
+ */
+function parsePlayList(playFrom: string, playUrl: string): PlayLine[] {
+  if (!playFrom || !playUrl) return [];
+  const froms = playFrom.split("$$$");
+  const groups = playUrl.split("$$$");
+  const lines: PlayLine[] = [];
+  for (let i = 0; i < froms.length; i++) {
+    const episodes: PlayEpisode[] = [];
+    const flag = froms[i];
+    for (const item of (groups[i] ?? "").split("#")) {
+      if (!item) continue;
+      const pos = item.indexOf("$");
+      const name = pos < 0 ? item : item.slice(0, pos);
+      const url = pos < 0 ? "" : item.slice(pos + 1);
+      const direct = isDirectUrl(url);
+      // 本服务播放地址：/play?flag=<线路名>&id=<剧集地址>
+      const play_url =
+        selfBase() +
+        "/play?flag=" +
+        encodeURIComponent(flag) +
+        "&id=" +
+        encodeURIComponent(url);
+      const ep: PlayEpisode = { name, url, direct, play_url };
+      if (!direct && url) {
+        try {
+          const decoded = JSON.parse(
+            Buffer.from(url, "base64").toString("utf8"),
+          ) as Record<string, unknown>;
+          ep.payload = Object.fromEntries(
+            Object.entries(decoded).map(([k, v]) => [k, String(v ?? "")]),
+          );
+        } catch {
+          // 非 Base64 JSON 的普通地址，保持 payload 为空
+        }
+      }
+      episodes.push(ep);
+    }
+    lines.push({ from: froms[i], episodes });
+  }
+  return lines;
 }
 
 /** 清晰度排序权重（原实现 k()，数值越小越靠前） */
@@ -608,12 +647,8 @@ class Woshinidie {
       AES_KEY,
     );
 
+    // 与原实现 c() 一致：签名信息只放在 paramsData 内，对外仅 3 个头
     return {
-      sig,
-      random_str: r,
-      timestamp: String(ts),
-      sig2,
-      sig3,
       "User-Agent": UA,
       "Content-Type": "application/x-protobuf",
       publicParams: JSON.stringify({ paramsData }),
@@ -719,14 +754,9 @@ class Woshinidie {
   /** 首页推荐（响应需 AES 解密后才是 JSON） */
   async homeVideoContent() {
     const url = this.host + "/api/ex/v3/security/tag/list";
+    // 与原实现一致：直接解析 JSON 包装，取 data 字段
     const raw = (await getText(url, this.jsonHeaders())).trim();
-    let enc = "";
-    try {
-      enc = String(JSON.parse(raw).data ?? "");
-    } catch {
-      // 接口直接返回密文（非 JSON 包装）
-      enc = raw;
-    }
+    const enc = String(JSON.parse(raw).data ?? "");
     if (!enc) return { list: [] };
 
     // 原实现为双重解密：先 this.f，再 keys[1]
@@ -757,10 +787,11 @@ class Woshinidie {
     page: string,
     ext?: Record<string, string>,
   ) {
+    // 参数顺序与原实现 c() 中 map2 的插入顺序保持一致
     const params: Record<string, string> = {
+      pagesize: PAGE_SIZE,
       typeId1: tid,
       page,
-      pagesize: PAGE_SIZE,
       vodOrderBy: ext?.extend_sort ?? "最新",
       vodArea: ext?.area ?? "",
       vodLang: ext?.lang ?? "",
@@ -777,16 +808,18 @@ class Woshinidie {
         vod_pic: b.pic,
         vod_remarks: b.remark,
       }));
+    // 与原实现 h.c(int) 一致：page ≤ 0 时取最大值，其余计数恒为 Integer.MAX_VALUE
+    const p = Number(page) || 0;
     return {
-      page: Number(page) || 1,
+      page: p > 0 ? p : 2147483647,
       pagecount: 2147483647,
       limit: 2147483647,
-      total: pageData.total || 2147483647,
+      total: 2147483647,
       list,
     };
   }
 
-  /** 详情（按线路分组，非直链用 Base64 包裹 {source, playUrl}） */
+  /** 详情（按线路分组，非直链用 Base64 包裹 {vodPlayFrom, playUrl}） */
   async detailContent(id: string) {
     const buf = await postProto(
       this.host + "/api/proto/v5/drama/getDetail",
@@ -802,8 +835,9 @@ class Woshinidie {
       if (!groups.has(from)) groups.set(from, []);
       let path = v.path;
       if (!isDirectUrl(path)) {
+        // 与原实现一致：只放 vodPlayFrom(=source) 与 playUrl
         path = Buffer.from(
-          JSON.stringify({ source: v.source, playUrl: path }),
+          JSON.stringify({ vodPlayFrom: v.source, playUrl: path }),
           "utf8",
         ).toString("base64");
       }
@@ -816,37 +850,39 @@ class Woshinidie {
     const froms = entries.map(([k]) => k);
     const urls = entries.map(([, v]) => v.join("#"));
     if (froms.length) froms[0] = "嗷呜橘汁";
+    const playFrom = froms.join("$$$");
+    const playUrl = urls.join("$$$");
 
     return {
       list: [
         {
-          vod_id: String(d.id || id),
+          vod_id: id,
           vod_name: d.name,
           vod_pic: d.pic,
           vod_actor: d.actor,
           vod_director: d.director,
+          vod_tag: d.tag,
           vod_area: d.area,
-          vod_year: d.year ? String(d.year) : "",
+          vod_year: String(d.year),
           vod_remarks: d.remark,
           vod_content: d.intro,
-          vod_play_from: froms.join("$$$"),
-          vod_play_url: urls.join("$$$"),
+          vod_play_from: playFrom,
+          vod_play_url: playUrl,
+          // 结构化解析结果：线路 -> 剧集
+          vod_play_list: parsePlayList(playFrom, playUrl),
         },
       ],
     };
   }
 
   /** 播放：直链直接返回，否则换取真实播放地址 */
-  async playerContent(flag: string, playUrl: string) {
+  async playerContent(_flag: string, playUrl: string) {
     if (isDirectUrl(playUrl)) {
       return { parse: 0, url: playUrl, header: {} };
     }
     const payload = JSON.parse(
       Buffer.from(playUrl, "base64").toString("utf8"),
-    ) as {
-      source?: string;
-      playUrl?: string;
-    };
+    ) as Record<string, unknown>;
     const params: Record<string, string> = {};
     for (const [k, v] of Object.entries(payload)) params[k] = String(v ?? "");
 
@@ -857,8 +893,13 @@ class Woshinidie {
     );
     const result = decodeApiResult(buf);
     const p = decodeParsePlayUrl(result.data);
-    if (!p.playUrl) return { parse: 0, url: "", header: {}, msg: "链接为空" };
-    return { parse: 0, url: p.playUrl, header: p.headers };
+    // 与原实现一致：链接为空时 msg=链接为空
+    if (!p.playUrl) return { list: [], msg: "链接为空" };
+    // 原实现 h.b(map)：map 为空时直接返回（header 字段为 null 被省略），
+    // 非空时序列化成 JSON 字符串
+    const play: Record<string, unknown> = { parse: 0, url: p.playUrl };
+    if (Object.keys(p.headers).length) play.header = JSON.stringify(p.headers);
+    return play;
   }
 
   /** 搜索 */
@@ -912,13 +953,14 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         name: "Woshinidie (橘汁) Node Service",
         routes: [
-          "GET /home",
-          "GET /home/video",
-          "GET /category?tid=<id>&page=1&ext=<urlencoded json>",
-          "GET /detail?id=<vod_id>",
-          "GET /play?flag=<line>&id=<base64 payload>",
-          "GET /search?wd=<keyword>",
-          "GET /health",
+          "GET /  本说明",
+          "GET /health  健康检查",
+          "GET /home  首页分类与筛选器",
+          "GET /home/video  首页推荐",
+          "GET /category?tid=<分类id>&page=<页码>&ext=<可选，urlencoded JSON>  分类列表",
+          "GET /detail?id=<vod_id>  详情，含结构化 vod_play_list",
+          "GET /play?flag=<线路名>&id=<剧集地址>  播放解析；id 可为直链或 Base64 payload，参数需 urlencode",
+          "GET /search?wd=<关键词>  搜索",
         ],
       });
     }
